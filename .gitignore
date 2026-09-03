@@ -7,3 +7,4 @@ uploads/*
 !uploads/.gitkeep
 .venv/
 .ipynb_checkpoints/
+cloudflared.exe
