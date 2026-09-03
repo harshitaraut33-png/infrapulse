@@ -1,105 +1,109 @@
 # Deploying InfraPulse
 
 The problem statement requires a **working URL that stays reachable throughout the
-evaluation period**. That makes host choice a correctness decision, not a preference.
+evaluation period**, so host choice is a correctness decision.
+
+> **Note on Hugging Face Spaces:** Docker and Gradio Spaces now require a paid PRO plan.
+> Only Static Spaces remain free, and those cannot run a Python backend. Use Render.
 
 ---
 
-## Why Hugging Face Spaces
+## Render (primary)
 
-Measured footprint of this app: PyTorch's import alone dominates memory, and a running
-request peaks well above what a 512 MB free tier can absorb once the model, the image
-buffers and the web server are all resident.
+Free Docker web services, no card required.
 
-| Host | Free RAM | Sleeps? | Verdict |
-|---|---|---|---|
-| **Hugging Face Spaces** | 16 GB | after ~48 h idle | **Use this** |
-| Render free | 512 MB | after 15 min idle | Risky — OOM, plus ~50 s cold start |
-| Render paid (Starter) | 512 MB+ | no | Fine if you are paying |
+**1. Sign in**
 
-Render's free tier fails us twice over: PyTorch may not fit in 512 MB at all, and a
-service that sleeps after 15 minutes means an evaluator opening our link at 9 pm waits
-through a cold start, or times out. Spaces has neither problem.
+render.com → **Get Started** → sign in **with GitHub** (simplest, and it can then see your
+repository directly).
 
-**This is hosting, nothing more.** Our model runs inside our own container, on CPU, from
-weights we trained. No external inference API is called. The problem statement explicitly
-permits general-purpose services for "authentication, databases, hosting".
+**2. Create the service**
 
----
+- Dashboard → **New +** → **Web Service**
+- Connect the `infrapulse` repository. If it isn't listed, click **Configure account** and
+  grant Render access to it — a private repo works fine.
+- Render reads `render.yaml` from the repo and fills most of this in. Confirm:
 
-## Deploy to Hugging Face Spaces
+| Field | Value |
+|---|---|
+| Name | `infrapulse` |
+| Language / Runtime | **Docker** |
+| Branch | `main` |
+| Instance type | **Free** |
+| Health check path | `/health` |
 
-**1. Make sure the model is committed**
+**3. Environment variables**
 
-`model/infrapulse_model.pt` (~45 MB) must be in the repository. Check `.gitignore` is not
-excluding it:
+Under **Environment**, add:
 
-```bash
-git add -f model/infrapulse_model.pt
-git status          # confirm it is staged
-```
-
-**2. Create the Space**
-
-- Sign in at huggingface.co → **New** → **Space**
-- Owner: you · Space name: `infrapulse`
-- **Space SDK: Docker** → **Blank**
-- Visibility: **Public** (evaluators must reach it without logging in)
-- Create
-
-**3. Push the code**
-
-```bash
-git remote add space https://huggingface.co/spaces/<your-username>/infrapulse
-git push space main
-```
-
-You will be asked for your username and an access token (huggingface.co/settings/tokens →
-New token → **Write**). Paste the token as the password.
-
-> **Leave the Space's own `README.md` alone.** Hugging Face stores the Space
-> configuration (`sdk: docker`, `app_port: 7860`) in its frontmatter. If you overwrite it
-> with our project README the Space will not build. If you hit a conflict on push, keep
-> theirs for `README.md` and yours for everything else.
-
-**4. Set the secrets**
-
-In the Space → **Settings** → **Variables and secrets** → add:
-
-| Name | Value |
+| Key | Value |
 |---|---|
 | `INFRAPULSE_SECRET` | any long random string |
 | `STAFF_PASSWORD` | the staff password you want |
 
-`INFRAPULSE_SECRET` matters: without it the app generates a new signing key on every
-restart, which silently logs everyone out mid-demo.
+`INFRAPULSE_SECRET` matters — without it the app generates a fresh signing key on every
+restart, which silently logs everyone out.
 
-**5. Wait for the build** (5–10 minutes the first time — PyTorch is large). The Space
-shows **Running** when it is live.
+**4. Deploy**
 
-**6. Verify before you call it done**
+Click **Create Web Service**. The first build takes 5–10 minutes; PyTorch is large. Watch
+the log stream. Success looks like:
 
-- Open `https://<your-username>-infrapulse.hf.space/health` → should report
-  `"loaded": true` and list the four classes. If it says `false`, the model file did not
-  get committed.
-- Open the site **in a private/incognito window**, so you are testing as an evaluator with
-  no session: register, submit a photo, confirm a defect and category come back.
-- Log in as staff and confirm the complaint is sitting in the right queue.
+```
+[InfraPulse] model loaded: {'loaded': True, 'classes': [...]}
+INFO:  Uvicorn running on http://0.0.0.0:10000
+==> Your service is live 🎉
+```
+
+**5. Verify before calling it done**
+
+- `https://infrapulse-XXXX.onrender.com/health` → must report `"loaded": true`
+- Open the site in a **private/incognito window** — you are then testing as an evaluator
+  with no session. Register, submit a photo, confirm a defect and category come back.
+- Log in as staff, confirm the complaint is in the right queue.
+
+### Two things to know about the free tier
+
+**It sleeps after 15 minutes idle.** The next visitor waits roughly 50 seconds for a cold
+start. Before the evaluation window, open the URL yourself to wake it, and keep a tab
+loading it every few minutes.
+
+**512 MB RAM is tight for PyTorch.** The app sets `torch.set_num_threads(1)` and
+`cv2.setNumThreads(1)` to keep the footprint down. If the logs show `Out of memory` or the
+service restarts under load, use the fallback below.
 
 ---
 
-## Fallback: Render
+## Fallback: Cloudflare Tunnel from your own machine
 
-Only if Spaces is unavailable, and preferably on a paid plan.
+If Render runs out of memory, this exposes the app running on your laptop at a public URL.
+No account, no card, works in two minutes.
 
-1. Push to GitHub.
-2. render.com → **New** → **Web Service** → connect the repo.
-3. Runtime **Docker**. `render.yaml` in the repo sets the health check and generates
-   `INFRAPULSE_SECRET` automatically.
-4. Set `STAFF_PASSWORD` manually in the dashboard.
+**1. Download** `cloudflared` for Windows:
+https://github.com/cloudflare/cloudflared/releases/latest — take
+`cloudflared-windows-amd64.exe`, rename it `cloudflared.exe`.
 
-On the free plan, expect a cold start of roughly a minute after idling, and watch for
-out-of-memory restarts in the logs.
+**2. Run the app** in one PowerShell window:
+
+```powershell
+cd "C:\Users\ADMIN\OneDrive\Desktop\Descon Mid_prep\infrapulse"
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+**3. Open the tunnel** in a second window:
+
+```powershell
+.\cloudflared.exe tunnel --url http://localhost:8000
+```
+
+It prints a public URL like `https://random-words-here.trycloudflare.com`. That link works
+for anyone, anywhere.
+
+**The catch:** your laptop must stay awake, online, and running both windows for the whole
+evaluation period, and the URL changes each time you restart the tunnel. Acceptable as a
+backup or for a live demo; not ideal as the primary submission link.
+
+If you use this, disable sleep: **Settings → System → Power → Screen and sleep → Never**.
 
 ---
 
@@ -107,10 +111,10 @@ out-of-memory restarts in the logs.
 
 - [ ] `/health` returns `"loaded": true`
 - [ ] Full flow works in a private window on the live URL
-- [ ] Staff accounts exist and each sees only its own category
-- [ ] URL is public — no login wall, no "space is private"
-- [ ] `INFRAPULSE_SECRET` is set, so restarts do not drop sessions
+- [ ] Staff accounts exist, each seeing only its own category
+- [ ] URL is public — no login wall
+- [ ] `INFRAPULSE_SECRET` is set
 - [ ] Someone else opens the link on their phone and it works
 
-That last one is worth doing. It is the cheapest way to catch a URL that only works
-because your browser happens to hold a session.
+That last one is the cheapest way to catch a URL that only works because your own browser
+happens to hold a session.

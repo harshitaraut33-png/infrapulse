@@ -26,6 +26,13 @@ import torch
 from PIL import Image
 from torchvision import models, transforms
 
+# Free hosting tiers give us 512 MB of RAM and a fraction of a CPU. PyTorch spawns a
+# worker thread per core by default, and each one carries its own allocator arenas — on a
+# small instance that is pure overhead that can push us into an out-of-memory restart.
+# One thread is both lighter and, for single-image inference, no slower in practice.
+torch.set_num_threads(1)
+cv2.setNumThreads(1)
+
 # --------------------------------------------------------------------------------------
 # Defect -> category routing. Fixed by the problem statement.
 # --------------------------------------------------------------------------------------
