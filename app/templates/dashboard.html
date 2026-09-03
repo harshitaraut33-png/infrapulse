@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="head-row">
+  <h2>My complaints</h2>
+  <a class="btn" href="/complaints/new">Report a defect</a>
+</div>
+
+{% if not complaints %}
+  <div class="panel"><p class="muted">Nothing reported yet. Upload a photograph of a defect
+    and it will be identified and queued automatically.</p></div>
+{% else %}
+<table class="grid" id="mine">
+  <thead>
+    <tr><th>#</th><th>Detected defect</th><th>Category</th><th>Priority</th>
+        <th>Queue position</th><th>Status</th><th>Location</th><th></th></tr>
+  </thead>
+  <tbody>
+  {% for c in complaints %}
+    <tr data-id="{{ c.id }}" class="{{ 'resolved' if c.status == 'Resolved' else '' }}">
+      <td>{{ c.id }}</td>
+      <td><strong>{{ c.defect_name }}</strong></td>
+      <td>{{ c.category }}</td>
+      <td><span class="band {{ c.priority_band|lower }}">{{ c.priority_band }}</span>
+          <span class="muted">{{ '%.1f'|format(c.priority_score) }}</span></td>
+      <td class="pos">{% if c.position %}#{{ c.position }} in queue{% else %}—{% endif %}</td>
+      <td><span class="status">{{ c.status }}</span></td>
+      <td class="muted">{{ c.address }}</td>
+      <td><a href="/complaints/{{ c.id }}">View</a></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="muted">Resolved complaints stay here in your history, but leave the live
+   maintenance queue.</p>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Keep status and queue position current without the user reloading.
+setInterval(async () => {
+  try {
+    const r = await fetch('/api/my-complaints');
+    if (!r.ok) return;
+    const data = await r.json();
+    for (const c of data.complaints) {
+      const row = document.querySelector(`#mine tr[data-id="${c.id}"]`);
+      if (!row) continue;
+      row.querySelector('.status').textContent = c.status;
+      row.querySelector('.pos').textContent = c.position ? `#${c.position} in queue` : '—';
+      row.classList.toggle('resolved', c.status === 'Resolved');
+    }
+  } catch (e) { /* offline; try again next tick */ }
+}, 5000);
+</script>
+{% endblock %}

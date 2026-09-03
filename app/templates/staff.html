@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="head-row">
+  <h2>{{ category }} queue</h2>
+  <span class="muted" id="qcount">{{ queue|length }} live complaint(s) ·
+    refreshes automatically</span>
+</div>
+
+<p class="muted">Ordered by priority score, highest first. New complaints are placed in
+   position automatically as they arrive — nothing is re-entered by hand.</p>
+
+<table class="grid" id="queue">
+  <thead>
+    <tr><th>#</th><th>ID</th><th>Defect</th><th>Priority</th><th>Severity</th>
+        <th>Extent</th><th>Status</th><th>Location</th><th>Action</th></tr>
+  </thead>
+  <tbody>
+  {% for c in queue %}
+    <tr data-id="{{ c.id }}">
+      <td class="pos"><strong>{{ loop.index }}</strong></td>
+      <td>{{ c.id }}</td>
+      <td><a href="/complaints/{{ c.id }}"><strong>{{ c.defect_name }}</strong></a></td>
+      <td><span class="band {{ c.priority_band|lower }}">{{ c.priority_band }}</span>
+          <span class="score">{{ '%.1f'|format(c.priority_score) }}</span></td>
+      <td>{{ '%.2f'|format(c.severity) }}</td>
+      <td>{{ '%.2f'|format(c.extent) }}</td>
+      <td><span class="status">{{ c.status }}</span></td>
+      <td class="muted">{{ c.address }}</td>
+      <td>
+        {% set nxt = statuses[statuses.index(c.status) + 1] if statuses.index(c.status) + 1 < statuses|length else None %}
+        {% if nxt %}
+        <form method="post" action="/staff/complaints/{{ c.id }}/status" class="inline">
+          <input type="hidden" name="new_status" value="{{ nxt }}">
+          <button class="btn-sm" type="submit">Mark {{ nxt }}</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="9" class="muted">Queue is clear. Nothing outstanding in
+        {{ category }}.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h3>Recently resolved</h3>
+{% if resolved %}
+<table class="grid subtle">
+  <thead><tr><th>ID</th><th>Defect</th><th>Location</th><th>Resolved at</th></tr></thead>
+  <tbody>
+  {% for c in resolved %}
+    <tr><td>{{ c.id }}</td><td>{{ c.defect_name }}</td>
+        <td class="muted">{{ c.address }}</td><td class="muted">{{ c.updated_at }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="muted">Nothing resolved yet.</p>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Live queue: poll for changes and reload only when the ordering or contents actually
+// change, so a staff member is never mid-click when the table moves under them.
+let signature = null;
+setInterval(async () => {
+  try {
+    const r = await fetch('/api/queue/{{ category }}');
+    if (!r.ok) return;
+    const data = await r.json();
+    const sig = data.queue.map(q => `${q.id}:${q.status}:${q.priority_score}`).join('|');
+    if (signature === null) { signature = sig; return; }
+    if (sig !== signature) location.reload();
+  } catch (e) { /* offline; try again next tick */ }
+}, 5000);
+</script>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="head-row">
+  <h2>Complaint #{{ c.id }}</h2>
+  <span class="status big">{{ c.status }}</span>
+</div>
+
+<div class="detail">
+  <div class="photo"><img src="/photos/{{ c.photo }}" alt="Submitted photograph"></div>
+
+  <div class="facts">
+    <h3>What the system detected</h3>
+    <dl>
+      <dt>Defect</dt><dd><strong>{{ c.defect_name }}</strong></dd>
+      <dt>Category</dt><dd>{{ c.category }}</dd>
+      <dt>Model confidence</dt><dd>{{ '%.1f'|format(c.confidence * 100) }}%</dd>
+    </dl>
+
+    <h3>Why it sits where it does</h3>
+    <dl>
+      <dt>Visible severity</dt><dd>{{ '%.3f'|format(c.severity) }} <span class="muted">of 1</span></dd>
+      <dt>Visible extent</dt><dd>{{ '%.3f'|format(c.extent) }} <span class="muted">of 1</span></dd>
+      <dt>Priority score</dt>
+      <dd><span class="band {{ c.priority_band|lower }}">{{ c.priority_band }}</span>
+          <strong>{{ '%.2f'|format(c.priority_score) }}</strong></dd>
+      {% if position %}<dt>Queue position</dt><dd>#{{ position }} in the
+        {{ c.category }} queue</dd>{% endif %}
+    </dl>
+    <p class="formula">{{ c.explanation }}</p>
+
+    {% if user.role == 'staff' and next_status %}
+    <form method="post" action="/staff/complaints/{{ c.id }}/status">
+      <input type="hidden" name="new_status" value="{{ next_status }}">
+      <button class="btn" type="submit">Mark {{ next_status }}</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="panel">
+  <h3>Reported details</h3>
+  <dl>
+    <dt>Reported by</dt><dd>{{ c.reporter_name }}</dd>
+    <dt>Location</dt><dd>{{ c.address }}</dd>
+    <dt>Description</dt><dd>{{ c.description }}</dd>
+    <dt>Submitted</dt><dd>{{ c.created_at }}</dd>
+  </dl>
+</div>
+
+<div class="panel">
+  <h3>Status history</h3>
+  <ol class="timeline">
+    {% for h in history %}
+      <li><strong>{{ h.status }}</strong> — {{ h.changed_by }}
+          <span class="muted">{{ h.changed_at }}</span></li>
+    {% endfor %}
+  </ol>
+</div>
+{% endblock %}

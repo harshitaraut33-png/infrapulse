@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}InfraPulse{% endblock %}</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/">Infra<span>Pulse</span></a>
+  <nav>
+    {% if user %}
+      {% if user.role == 'user' %}
+        <a href="/dashboard">My complaints</a>
+        <a class="btn-sm" href="/complaints/new">Report a defect</a>
+      {% else %}
+        <a href="/staff">{{ user.category }} queue</a>
+      {% endif %}
+      <span class="who">{{ user.name }}{% if user.role == 'staff' %} · staff{% endif %}</span>
+      <a href="/logout">Log out</a>
+    {% else %}
+      <a href="/login">Log in</a>
+      <a class="btn-sm" href="/register">Register</a>
+    {% endif %}
+  </nav>
+</header>
+
+<main>
+  {% if error %}<div class="alert error">{{ error }}</div>{% endif %}
+  {% if msg %}<div class="alert ok">{{ msg }}</div>{% endif %}
+  {% block content %}{% endblock %}
+</main>
+
+<footer>InfraPulse — automated defect detection &amp; priority maintenance routing</footer>
+{% block scripts %}{% endblock %}
+</body>
+</html>

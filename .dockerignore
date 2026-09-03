@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.db
+*.db-wal
+*.db-shm
+.git/
+.venv/
+uploads/*
+data/
+.ipynb_checkpoints/
+InfraPulse_Train.ipynb
+test_e2e.py

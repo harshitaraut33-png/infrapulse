@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel narrow">
+  <h2>Register</h2>
+  <form method="post" action="/register">
+    <label>Full name<input name="name" value="{{ name or '' }}" required autofocus></label>
+    <label>Email<input type="email" name="email" value="{{ email or '' }}" required></label>
+    <label>Password<input type="password" name="password" minlength="6" required></label>
+    <button class="btn" type="submit">Create account</button>
+  </form>
+  <p class="muted">Already registered? <a href="/login">Log in</a>.</p>
+</div>
+{% endblock %}

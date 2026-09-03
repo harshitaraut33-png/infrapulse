@@ -1,0 +1,14 @@
+# Fallback host. Note: the free plan gives 512 MB RAM, which is tight for PyTorch —
+# see DEPLOY.md. Prefer Hugging Face Spaces unless you are on a paid Render plan.
+services:
+  - type: web
+    name: infrapulse
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: INFRAPULSE_SECRET
+        generateValue: true
+      - key: STAFF_PASSWORD
+        sync: false

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel narrow">
+  <h2>Report a defect</h2>
+  {% if not model_ready %}
+    <div class="alert error">The detection model is not loaded, so complaints cannot be
+      analysed yet. Place <code>infrapulse_model.pt</code> in the <code>model/</code>
+      folder and restart the server.</div>
+  {% endif %}
+  <p class="muted">You do not choose the defect type or how urgent it is — the system reads
+     that from your photograph.</p>
+  <form method="post" action="/complaints/new" enctype="multipart/form-data">
+    <label>Your name
+      <input name="reporter_name" value="{{ reporter_name or user.name }}" required></label>
+    <label>Address / location
+      <input name="address" value="{{ address or '' }}" required
+             placeholder="e.g. Hall 6, B-wing corridor, 2nd floor"></label>
+    <label>What is wrong?
+      <textarea name="description" rows="3" required
+                placeholder="A short description of the problem">{{ description or '' }}</textarea></label>
+    <label>Photograph of the defect
+      <input type="file" name="photo" accept="image/*" required></label>
+    <button class="btn" type="submit" {% if not model_ready %}disabled{% endif %}>
+      Submit complaint</button>
+  </form>
+</div>
+{% endblock %}
