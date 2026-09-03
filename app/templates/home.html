@@ -1,33 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="hero">
-  <h1>Report a building defect. We do the triage.</h1>
-  <p>Upload a photograph of the problem. InfraPulse identifies the defect, works out how
-     urgent it is from what is visible in the image, and sends it straight to the team
-     that handles it — no forms to categorise, no waiting for a human to sort the pile.</p>
-  <p class="cta">
-    <a class="btn" href="/register">Report a defect</a>
-    <a class="btn ghost" href="/login">Staff log in</a>
-  </p>
+<section class="landing">
+  <h1>Report. Detect. Resolve.</h1>
+  <p class="lede">An intelligent maintenance platform for reporting, detecting, and
+     prioritizing infrastructure defects.</p>
+  <div class="landing-actions">
+    <a class="btn" href="/login">User Login</a>
+    <a class="btn dark" href="/login">Staff Login</a>
+  </div>
+  <p class="landing-note">New here? <a href="/register">Create a resident account</a></p>
 </section>
-
-<section class="cards">
-  <div class="card">
-    <h3>Structural</h3>
-    <p>Spalling — concrete breaking away and exposing the material underneath.</p>
-    <span class="count">{{ stats.live_by_category.get('Structural', 0) }} open</span>
-  </div>
-  <div class="card">
-    <h3>Functional</h3>
-    <p>Stagnant water — pooling that will not drain.</p>
-    <span class="count">{{ stats.live_by_category.get('Functional', 0) }} open</span>
-  </div>
-  <div class="card">
-    <h3>Performance</h3>
-    <p>Cracked tiles and peeling paint.</p>
-    <span class="count">{{ stats.live_by_category.get('Performance', 0) }} open</span>
-  </div>
-</section>
-
-<p class="muted center">{{ stats.total }} complaints handled · {{ stats.resolved }} resolved</p>
 {% endblock %}
